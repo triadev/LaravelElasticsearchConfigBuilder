@@ -1,3 +1,5 @@
+# WORK IN PROGRESS
+
 # LaravelElasticsearchConfigBuilder
 
 [![Software license][ico-license]](LICENSE)
