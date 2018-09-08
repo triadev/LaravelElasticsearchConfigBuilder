@@ -26,7 +26,7 @@ class ElasticsearchConfigTest extends TestCase
         $clientBuilder->setHosts([
             [
                 'host' => env('ELASTICSEARCH_HOST', 'localhost'),
-                'port' => env('ELASTICSEARCH_PORT', 9222),
+                'port' => env('ELASTICSEARCH_PORT', 9200),
                 'scheme' => 'http'
             ]
         ]);
