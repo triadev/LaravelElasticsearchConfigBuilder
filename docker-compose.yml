@@ -1,0 +1,42 @@
+version: '2.2'
+services:
+  elasticsearch-laravel-elasticsearch-config-builder:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.0
+    container_name: elasticsearch-laravel-elasticsearch-config-builder
+    environment:
+      - cluster.name=test-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata1:/usr/share/elasticsearch/data
+    ports:
+      - 9222:9200
+
+  elasticsearch-laravel-elasticsearch-config-builder-2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.4.0
+    container_name: elasticsearch-laravel-elasticsearch-config-builder-2
+    environment:
+      - cluster.name=test-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "discovery.zen.ping.unicast.hosts=elasticsearch-laravel-elasticsearch-config-builder"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata2:/usr/share/elasticsearch/data
+
+volumes:
+  esdata1:
+    driver: local
+  esdata2:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
