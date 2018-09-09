@@ -36,9 +36,10 @@ class TestCase extends \Orchestra\Testbench\TestCase
     protected function getEnvironmentSetUp($app)
     {
         $app['config']->set('triadev-elasticsearch-config-builder', [
-            'resourcesPath' => __DIR__ . '/Resources/Mappings',
+            'filePath' => __DIR__ . '/Resources/Mappings',
             'indices' => [
                 'phpunit-by-field' => '1.0.0',
+                'phpunit-by-index' => '1.0.0',
                 'phpunit-analyzer-not-found' => '1.0.0',
                 'phpunit-filter-not-found' => '1.0.0',
             ]

@@ -31,9 +31,6 @@ If you do find an issue, please feel free to report it with GitHub's bug tracker
 
 Alternatively, fork the project and make a pull request. :)
 
-## Roadmap
-- Multilanguage indices
-
 ## Other
 
 ### Project related links

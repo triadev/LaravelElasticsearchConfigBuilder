@@ -4,20 +4,21 @@ namespace Triadev\EsConfigBuilder;
 use Triadev\EsConfigBuilder\Contract\ElasticsearchConfigBuilderContract;
 use Triadev\EsConfigBuilder\Exceptions\MappingFileNotFound;
 use Triadev\EsConfigBuilder\Models\ElasticsearchConfig;
-use Triadev\EsConfigBuilder\Models\Mappings;
-use Triadev\EsConfigBuilder\Models\Settings;
 
 class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
 {
+    const TRANSLATION_TYPE_FIELD = 'field';
+    const TRANSLATION_TYPE_INDEX = 'index';
+    
     /** @var string */
-    private $resourcesPath;
+    private $filePath;
     
     /**
      * ElasticsearchConfigBuilder constructor.
      */
     public function __construct()
     {
-        $this->resourcesPath = config('triadev-elasticsearch-config-builder.resourcesPath');
+        $this->filePath = config('triadev-elasticsearch-config-builder.filePath');
     }
     
     /**
@@ -30,11 +31,40 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
         $mappings = [];
         
         array_walk($activeIndices, function ($version, $index) use (&$mappings) {
-            $mappings[$index] = $this->buildElasticsearchConfig(
-                $this->resourcesPath,
+            $translationsConfig = $this->buildTranslations($this->filePath, $index, $version);
+            
+            $elasticsearchConfig = $this->buildElasticsearchConfig(
+                $this->filePath,
                 $index,
                 $version
-            )->getElasticsearchConfig();
+            );
+            
+            if (array_get($translationsConfig, 'type') == self::TRANSLATION_TYPE_FIELD) {
+                $elasticsearchConfig = $this->translateMappingsByField($elasticsearchConfig, $translationsConfig);
+                $elasticsearchConfig = $this->updateMappingsByLocale($elasticsearchConfig, $translationsConfig);
+                
+                $mappings = [
+                    $index => $elasticsearchConfig->getElasticsearchConfig()
+                ];
+            } elseif (array_get($translationsConfig, 'type') == self::TRANSLATION_TYPE_INDEX) {
+                $mappings = [
+                    $index => $elasticsearchConfig->getElasticsearchConfig()
+                ];
+                
+                foreach (array_get($translationsConfig, 'locales') as $locale) {
+                    if (preg_match('/^[a-z]{2}[A-Z]{2}$/', $locale)) {
+                        $tmpElasticsearchConfig = clone $elasticsearchConfig;
+    
+                        $tmpElasticsearchConfig = $this->updateMappingsByLocale(
+                            $tmpElasticsearchConfig,
+                            $translationsConfig,
+                            $locale
+                        );
+                        
+                        $mappings[sprintf("%s_%s", $index, $locale)] = $tmpElasticsearchConfig->getElasticsearchConfig();
+                    }
+                }
+            }
         });
         
         return $mappings;
@@ -56,7 +86,7 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
             }
             
             if (is_dir($this->buildIndexResourcesPath(
-                $this->resourcesPath,
+                $this->filePath,
                 $indexPath,
                 $activeVersion
             ))) {
@@ -67,39 +97,38 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
         return $activeIndices;
     }
     
+    /**
+     * @param string $filePath
+     * @param string $index
+     * @param string $version
+     * @return ElasticsearchConfig
+     *
+     * @throws MappingFileNotFound
+     */
     private function buildElasticsearchConfig(
-        string $resourcesPath,
+        string $filePath,
         string $index,
         string $version
     ) : ElasticsearchConfig {
-        $mappings = $this->buildMappings($resourcesPath, $index, $version);
-        $settings = $this->buildSettings($resourcesPath, $index, $version);
+        $mappings = $this->buildMappings($filePath, $index, $version);
+        $settings = $this->buildSettings($filePath, $index, $version);
         
-        $elasticsearchConfig = new ElasticsearchConfig(
-            new Mappings(
-                $this->translateMappings(
-                    $resourcesPath,
-                    $mappings,
-                    $index,
-                    $version
-                )
-            ),
-            $settings ? new Settings($settings) : null
+        return new ElasticsearchConfig(
+            $mappings,
+            $settings
         );
-        
-        return $elasticsearchConfig;
     }
     
     /**
-     * @param string $resourcesPath
+     * @param string $filePath
      * @param string $index
      * @param string $version
      * @return array
      * @throws MappingFileNotFound
      */
-    private function buildMappings(string $resourcesPath, string $index, string $version) : array
+    private function buildMappings(string $filePath, string $index, string $version) : array
     {
-        $mappingsPath = $this->buildIndexResourcesPath($resourcesPath, $index, $version, 'mappings');
+        $mappingsPath = $this->buildIndexResourcesPath($filePath, $index, $version, 'mappings');
         if (file_exists($mappingsPath)) {
             return require $mappingsPath;
         }
@@ -108,14 +137,14 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
     }
     
     /**
-     * @param string $resourcesPath
+     * @param string $filePath
      * @param string $index
      * @param string $version
      * @return array|null
      */
-    private function buildSettings(string $resourcesPath, string $index, string $version) : ?array
+    private function buildSettings(string $filePath, string $index, string $version) : ?array
     {
-        $settingsPath = $this->buildIndexResourcesPath($resourcesPath, $index, $version, 'settings');
+        $settingsPath = $this->buildIndexResourcesPath($filePath, $index, $version, 'settings');
         if (file_exists($settingsPath)) {
             return require $settingsPath;
         }
@@ -124,69 +153,111 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
     }
     
     /**
-     * @param string $resourcesPath
-     * @param array $mappings
+     * @param string $filePath
      * @param string $index
      * @param string $version
-     * @return array
+     * @return array|null
      */
-    private function translateMappings(string $resourcesPath, array $mappings, string $index, string $version) : array
+    private function buildTranslations(string $filePath, string $index, string $version) : ?array
     {
-        $translationsPath = $this->buildIndexResourcesPath($resourcesPath, $index, $version, 'translations');
+        $translationsPath = $this->buildIndexResourcesPath($filePath, $index, $version, 'translations');
         if (file_exists($translationsPath)) {
-            $translationConfig = require $translationsPath;
-            
-            switch ($translationConfig['type']) {
-                case 'field':
-                    $mappings = $this->translateByField(
-                        $mappings,
-                        array_get($translationConfig, 'fields'),
-                        array_get($translationConfig, 'locales'),
-                        array_get($translationConfig, 'configPerLocale')
-                    );
-                    break;
-                default:
-                    break;
-            }
+            return require $translationsPath;
         }
         
-        return $mappings;
+        return null;
     }
     
-    private function translateByField(array $mappings, array $fields, array $locales, array $configPerLocale) : array
-    {
-        foreach ($fields as $field) {
+    /**
+     * @param ElasticsearchConfig $elasticsearchConfig
+     * @param array $translationsConfig
+     * @return ElasticsearchConfig
+     */
+    private function translateMappingsByField(
+        ElasticsearchConfig $elasticsearchConfig,
+        array $translationsConfig
+    ) : ElasticsearchConfig  {
+        $mappings = $elasticsearchConfig->getMappings();
+    
+        foreach (array_get($translationsConfig, 'fields') as $field) {
             $fieldValue = array_get($mappings, $field);
-        
-            foreach ($locales as $locale) {
+    
+            foreach (array_get($translationsConfig, 'locales') as $locale) {
                 if (preg_match('/^[a-z]{2}[A-Z]{2}$/', $locale)) {
                     array_set($mappings, sprintf("%s_%s", $field, $locale), $fieldValue);
                 }
             }
+        }
         
+        $elasticsearchConfig->setMappings($mappings);
+        
+        return $elasticsearchConfig;
+    }
+    
+    /**
+     * @param ElasticsearchConfig $elasticsearchConfig
+     * @param array $translationsConfig
+     * @param string|null $locale
+     * @return ElasticsearchConfig
+     */
+    private function updateMappingsByLocale(
+        ElasticsearchConfig $elasticsearchConfig,
+        array $translationsConfig,
+        ?string $locale = null
+    ) : ElasticsearchConfig {
+        $mappings = $elasticsearchConfig->getMappings();
+        
+        $translationType = array_get($translationsConfig, 'type');
+    
+        foreach (array_get($translationsConfig, 'fields') as $field) {
+            $configPerLocale = array_get($translationsConfig, 'configPerLocale');
+            
             if (is_array($configPerLocale) && array_key_exists($field, $configPerLocale)) {
-                foreach ($configPerLocale[$field] as $locale => $configs) {
-                    foreach (array_dot($configs) as $configKey => $configValue) {
-                        array_set(
-                            $mappings,
-                            sprintf("%s_%s.%s", $field, $locale, $configKey),
-                            $configValue
-                        );
+                if ($translationType == self::TRANSLATION_TYPE_FIELD) {
+                    foreach ($configPerLocale[$field] as $locale => $configs) {
+                        foreach (array_dot($configs) as $configKey => $configValue) {
+                            array_set(
+                                $mappings,
+                                sprintf("%s_%s.%s", $field, $locale, $configKey),
+                                $configValue
+                            );
+                        }
+                    }
+                } elseif ($translationType == self::TRANSLATION_TYPE_INDEX && $locale) {
+                    $configByField = array_get($configPerLocale, $field);
+    
+                    if ($config = array_get($configByField, $locale)) {
+                        foreach (array_dot($config) as $configKey => $configValue) {
+                            array_set(
+                                $mappings,
+                                sprintf("%s.%s", $field, $configKey),
+                                $configValue
+                            );
+                        }
                     }
                 }
             }
         }
         
-        return $mappings;
+        $elasticsearchConfig->setMappings($mappings);
+        
+        return $elasticsearchConfig;
     }
     
+    /**
+     * @param string $filePath
+     * @param string $index
+     * @param string $version
+     * @param null|string $configFile
+     * @return string
+     */
     private function buildIndexResourcesPath(
-        string $resourcesPath,
+        string $filePath,
         string $index,
         string $version,
         ?string $configFile = null
     ) : string {
-        $path = sprintf("%s/%s/%s", $resourcesPath, $index, $version);
+        $path = sprintf("%s/%s/%s", $filePath, $index, $version);
         
         if ($configFile) {
             $path .= sprintf("/%s.php", $configFile);

@@ -3,20 +3,52 @@ namespace Triadev\EsConfigBuilder\Models;
 
 class ElasticsearchConfig
 {
-    /** @var Mappings */
+    /** @var array */
     private $mappings;
     
-    /** @var Settings|null  */
+    /** @var array|null  */
     private $settings;
     
     /**
      * ElasticsearchConfig constructor.
-     * @param Mappings $mappings
-     * @param Settings|null $settings
+     * @param array $mappings
+     * @param array|null $settings
      */
-    public function __construct(Mappings $mappings, ?Settings $settings = null)
+    public function __construct(array $mappings, ?array $settings = null)
     {
         $this->mappings = $mappings;
+        $this->settings = $settings;
+    }
+    
+    /**
+     * @return array
+     */
+    public function getMappings(): array
+    {
+        return $this->mappings;
+    }
+    
+    /**
+     * @param array $mappings
+     */
+    public function setMappings(array $mappings): void
+    {
+        $this->mappings = $mappings;
+    }
+    
+    /**
+     * @return array|null
+     */
+    public function getSettings(): ?array
+    {
+        return $this->settings;
+    }
+    
+    /**
+     * @param array|null $settings
+     */
+    public function setSettings(?array $settings): void
+    {
         $this->settings = $settings;
     }
     
@@ -28,11 +60,11 @@ class ElasticsearchConfig
     public function getElasticsearchConfig() : array
     {
         $config = [
-            'mappings' => $this->mappings->getMappings()
+            'mappings' => $this->mappings
         ];
         
         if ($this->settings) {
-            $config['settings'] = $this->settings->getSettings();
+            $config['settings'] = $this->settings;
         }
         
         return $config;

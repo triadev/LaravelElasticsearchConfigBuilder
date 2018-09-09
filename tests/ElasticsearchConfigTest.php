@@ -170,4 +170,79 @@ class ElasticsearchConfigTest extends TestCase
             ]
         ], $mappings['phpunit-by-field']['mappings']);
     }
+    
+    /**
+     * @test
+     */
+    public function it_returns_a_elasticsearch_mapping_translated_by_index()
+    {
+        $result = $this->service->getMappings('phpunit-by-index', '1.0.0');
+        
+        $settings = [
+            'refresh_interval' => "30s",
+            'analysis' => [
+                'filter' => [
+                    'germanStop' => [
+                        'type' => 'stop',
+                        'stopwords' => '_german_'
+                    ],
+                    'englishStop' => [
+                        'type' => 'stop',
+                        'stopwords' => '_english_'
+                    ]
+                ],
+                'analyzer' => [
+                    'phpunitAnalyzer' => [
+                        'type' => 'custom',
+                        'tokenizer' => 'standard',
+                        'filter' => [
+                            'germanStop'
+                        ]
+                    ],
+                    'phpunitAnalyzerEn' => [
+                        'type' => 'custom',
+                        'tokenizer' => 'standard',
+                        'filter' => [
+                            'englishStop'
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        
+        $mappings = [
+            'phpunit' => [
+                'dynamic' => 'strict',
+                'properties' => [
+                    'title' => [
+                        'type' => 'text',
+                        'analyzer' => 'phpunitAnalyzer'
+                    ],
+                    'link' => [
+                        'type' => 'keyword',
+                        'doc_values' => false
+                    ],
+                    'images' => [
+                        'type' => 'nested',
+                        'properties' => [
+                            'title' => [
+                                'analyzer' => 'phpunitAnalyzer',
+                                'search_analyzer' => 'phpunitAnalyzer'
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        
+        $this->assertEquals($settings, $result['phpunit-by-index']['settings']);
+        $this->assertEquals($mappings, $result['phpunit-by-index']['mappings']);
+        
+        array_set($mappings, 'phpunit.properties.title.analyzer', 'phpunitAnalyzerEn');
+        array_set($mappings, 'phpunit.properties.images.properties.title.analyzer', 'phpunitAnalyzerEn');
+        array_set($mappings, 'phpunit.properties.images.properties.title.search_analyzer', 'phpunitAnalyzerEn');
+    
+        $this->assertEquals($settings, $result['phpunit-by-index_enUS']['settings']);
+        $this->assertEquals($mappings, $result['phpunit-by-index_enUS']['mappings']);
+    }
 }
