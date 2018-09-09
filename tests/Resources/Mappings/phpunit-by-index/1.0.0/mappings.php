@@ -16,6 +16,7 @@ return [
                 'type' => 'nested',
                 'properties' => [
                     'title' => [
+                        'type' => 'text',
                         'analyzer' => 'phpunitAnalyzer',
                         'search_analyzer' => 'phpunitAnalyzer'
                     ]

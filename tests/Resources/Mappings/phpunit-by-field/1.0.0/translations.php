@@ -3,10 +3,7 @@
 return [
     'type' => 'field',
     'locales' => [
-        'enUS',
-        'enGB',
-        'deAT',
-        'deCH'
+        'enUS'
     ],
     'fields' => [
         'phpunit.properties.title',
@@ -24,14 +21,6 @@ return [
         ],
         'phpunit.properties.images' => [
             'enUS' => [
-                'properties' => [
-                    'title' => [
-                        'analyzer' => 'phpunitAnalyzerEn',
-                        'search_analyzer' => 'phpunitAnalyzerEn'
-                    ]
-                ]
-            ],
-            'enGB' => [
                 'properties' => [
                     'title' => [
                         'analyzer' => 'phpunitAnalyzerEn',

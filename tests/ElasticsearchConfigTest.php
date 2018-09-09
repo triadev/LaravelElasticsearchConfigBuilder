@@ -41,6 +41,35 @@ class ElasticsearchConfigTest extends TestCase
     /**
      * @test
      */
+    public function it_creates_the_elasticsearch_mappings()
+    {
+        $mappingsToCreate = ['phpunit-by-field', 'phpunit-by-index'];
+        
+        foreach ($mappingsToCreate as $mappingToCreate) {
+            $mappings = $this->service->getMappings($mappingToCreate);
+            
+            try {
+                $this->esClient->indices()->create([
+                    'index' => $mappingToCreate,
+                    'body' => $mappings[$mappingToCreate]
+                ]);
+                
+                $result = true;
+            } catch (\Exception $e) {
+                $result = false;
+            }
+            
+            $this->assertTrue($result);
+        }
+        
+        $this->esClient->indices()->delete([
+            'index' => '_all'
+        ]);
+    }
+    
+    /**
+     * @test
+     */
     public function it_returns_a_elasticsearch_mapping_translated_by_field()
     {
         $mappings = $this->service->getMappings('phpunit-by-field', '1.0.0');
@@ -89,18 +118,6 @@ class ElasticsearchConfigTest extends TestCase
                         'type' => 'text',
                         'analyzer' => 'phpunitAnalyzerEn'
                     ],
-                    'title_enGB' => [
-                        'type' => 'text',
-                        'analyzer' => 'phpunitAnalyzerEn'
-                    ],
-                    'title_deAT' => [
-                        'type' => 'text',
-                        'analyzer' => 'phpunitAnalyzer'
-                    ],
-                    'title_deCH' => [
-                        'type' => 'text',
-                        'analyzer' => 'phpunitAnalyzer'
-                    ],
                     'link' => [
                         'type' => 'keyword',
                         'doc_values' => false
@@ -109,40 +126,11 @@ class ElasticsearchConfigTest extends TestCase
                         'type' => 'keyword',
                         'doc_values' => false
                     ],
-                    'link_enGB' => [
-                        'type' => 'keyword',
-                        'doc_values' => false
-                    ],
-                    'link_deAT' => [
-                        'type' => 'keyword',
-                        'doc_values' => false
-                    ],
-                    'link_deCH' => [
-                        'type' => 'keyword',
-                        'doc_values' => false
-                    ],
                     'images' => [
                         'type' => 'nested',
                         'properties' => [
                             'title' => [
-                                'analyzer' => 'phpunitAnalyzer',
-                                'search_analyzer' => 'phpunitAnalyzer'
-                            ]
-                        ]
-                    ],
-                    'images_deAT' => [
-                        'type' => 'nested',
-                        'properties' => [
-                            'title' => [
-                                'analyzer' => 'phpunitAnalyzer',
-                                'search_analyzer' => 'phpunitAnalyzer'
-                            ]
-                        ]
-                    ],
-                    'images_deCH' => [
-                        'type' => 'nested',
-                        'properties' => [
-                            'title' => [
+                                'type' => 'text',
                                 'analyzer' => 'phpunitAnalyzer',
                                 'search_analyzer' => 'phpunitAnalyzer'
                             ]
@@ -152,15 +140,7 @@ class ElasticsearchConfigTest extends TestCase
                         'type' => 'nested',
                         'properties' => [
                             'title' => [
-                                'analyzer' => 'phpunitAnalyzerEn',
-                                'search_analyzer' => 'phpunitAnalyzerEn'
-                            ]
-                        ]
-                    ],
-                    'images_enGB' => [
-                        'type' => 'nested',
-                        'properties' => [
-                            'title' => [
+                                'type' => 'text',
                                 'analyzer' => 'phpunitAnalyzerEn',
                                 'search_analyzer' => 'phpunitAnalyzerEn'
                             ]
@@ -226,6 +206,7 @@ class ElasticsearchConfigTest extends TestCase
                         'type' => 'nested',
                         'properties' => [
                             'title' => [
+                                'type' => 'text',
                                 'analyzer' => 'phpunitAnalyzer',
                                 'search_analyzer' => 'phpunitAnalyzer'
                             ]
@@ -244,5 +225,23 @@ class ElasticsearchConfigTest extends TestCase
     
         $this->assertEquals($settings, $result['phpunit-by-index_enUS']['settings']);
         $this->assertEquals($mappings, $result['phpunit-by-index_enUS']['mappings']);
+    }
+    
+    /**
+     * @test
+     * @expectedException \Triadev\EsConfigBuilder\Exceptions\AnalyzerNotFound
+     */
+    public function it_throws_an_exception_that_analyzer_not_found()
+    {
+        $this->service->getMappings('phpunit-analyzer-not-found');
+    }
+    
+    /**
+     * @test
+     * @expectedException \Triadev\EsConfigBuilder\Exceptions\FilterNotFound
+     */
+    public function it_throws_an_exception_that_filter_not_found()
+    {
+        $this->service->getMappings('phpunit-filter-not-found');
     }
 }

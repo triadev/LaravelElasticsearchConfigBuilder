@@ -1,6 +1,8 @@
 <?php
 namespace Triadev\EsConfigBuilder;
 
+use Triadev\EsConfigBuilder\Business\Validator\AnalyzerOfMappings;
+use Triadev\EsConfigBuilder\Business\Validator\FilterOfAnalyzer;
 use Triadev\EsConfigBuilder\Contract\ElasticsearchConfigBuilderContract;
 use Triadev\EsConfigBuilder\Exceptions\MappingFileNotFound;
 use Triadev\EsConfigBuilder\Models\ElasticsearchConfig;
@@ -42,15 +44,7 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
             if (array_get($translationsConfig, 'type') == self::TRANSLATION_TYPE_FIELD) {
                 $elasticsearchConfig = $this->translateMappingsByField($elasticsearchConfig, $translationsConfig);
                 $elasticsearchConfig = $this->updateMappingsByLocale($elasticsearchConfig, $translationsConfig);
-                
-                $mappings = [
-                    $index => $elasticsearchConfig->getElasticsearchConfig()
-                ];
             } elseif (array_get($translationsConfig, 'type') == self::TRANSLATION_TYPE_INDEX) {
-                $mappings = [
-                    $index => $elasticsearchConfig->getElasticsearchConfig()
-                ];
-                
                 foreach (array_get($translationsConfig, 'locales') as $locale) {
                     if (preg_match('/^[a-z]{2}[A-Z]{2}$/', $locale)) {
                         $tmpElasticsearchConfig = clone $elasticsearchConfig;
@@ -65,7 +59,12 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
                     }
                 }
             }
+    
+            $mappings[$index] = $elasticsearchConfig->getElasticsearchConfig();
         });
+        
+        app()->make(FilterOfAnalyzer::class)->validate($mappings);
+        app()->make(AnalyzerOfMappings::class)->validate($mappings);
         
         return $mappings;
     }
@@ -215,15 +214,18 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
             if (is_array($configPerLocale) && array_key_exists($field, $configPerLocale)) {
                 if ($translationType == self::TRANSLATION_TYPE_FIELD) {
                     foreach ($configPerLocale[$field] as $locale => $configs) {
-                        foreach (array_dot($configs) as $configKey => $configValue) {
-                            array_set(
-                                $mappings,
-                                sprintf("%s_%s.%s", $field, $locale, $configKey),
-                                $configValue
-                            );
+                        if (in_array($locale, array_get($translationsConfig, 'locales'))) {
+                            foreach (array_dot($configs) as $configKey => $configValue) {
+                                array_set(
+                                    $mappings,
+                                    sprintf("%s_%s.%s", $field, $locale, $configKey),
+                                    $configValue
+                                );
+                            }
                         }
                     }
-                } elseif ($translationType == self::TRANSLATION_TYPE_INDEX && $locale) {
+                } elseif ($translationType == self::TRANSLATION_TYPE_INDEX &&
+                    in_array($locale, array_get($translationsConfig, 'locales'))) {
                     $configByField = array_get($configPerLocale, $field);
     
                     if ($config = array_get($configByField, $locale)) {
