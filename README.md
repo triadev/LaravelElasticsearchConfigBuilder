@@ -16,6 +16,7 @@ Elasticsearch config (mappings + settings) builder for laravel.
 - Build mappings
 - Build settings
 - Multilanguage keys
+- Multilanguage indices
 
 ## Installation
 
@@ -25,6 +26,10 @@ Elasticsearch config (mappings + settings) builder for laravel.
 ### Application
 The package is registered through the package discovery of laravel and Composer.
 >https://laravel.com/docs/5.6/packages
+
+## Roadmap
+- Check: Analyzer not found
+- Check: Filter not found
 
 ## Reporting Issues
 If you do find an issue, please feel free to report it with GitHub's bug tracker for this project.
