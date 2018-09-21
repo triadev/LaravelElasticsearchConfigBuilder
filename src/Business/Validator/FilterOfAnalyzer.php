@@ -23,7 +23,8 @@ class FilterOfAnalyzer
                         foreach ($filter as $f) {
                             if (!in_array($f, $validFilter)) {
                                 throw new FilterNotFound(sprintf(
-                                    "The filter could not be found: %s", $f
+                                    "The filter could not be found: %s",
+                                    $f
                                 ));
                             }
                         }

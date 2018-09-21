@@ -55,7 +55,8 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
                             $locale
                         );
                         
-                        $mappings[sprintf("%s_%s", $index, $locale)] = $tmpElasticsearchConfig->getElasticsearchConfig();
+                        $mappings[sprintf("%s_%s", $index, $locale)] =
+                            $tmpElasticsearchConfig->getElasticsearchConfig();
                     }
                 }
             }
@@ -175,7 +176,7 @@ class ElasticsearchConfigBuilder implements ElasticsearchConfigBuilderContract
     private function translateMappingsByField(
         ElasticsearchConfig $elasticsearchConfig,
         array $translationsConfig
-    ) : ElasticsearchConfig  {
+    ) : ElasticsearchConfig {
         $mappings = $elasticsearchConfig->getMappings();
     
         foreach (array_get($translationsConfig, 'fields') as $field) {

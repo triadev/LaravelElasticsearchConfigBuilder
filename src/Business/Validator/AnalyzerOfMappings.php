@@ -20,7 +20,8 @@ class AnalyzerOfMappings
             foreach (array_dot(array_get($configPerType, 'mappings')) as $key => $value) {
                 if (preg_match('/^.*\.analyzer$/', $key) && !in_array($value, $validAnalyzer)) {
                     throw new AnalyzerNotFound(sprintf(
-                        "The analyzer could not be found: %s", $value
+                        "The analyzer could not be found: %s",
+                        $value
                     ));
                 }
             }
