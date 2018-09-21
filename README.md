@@ -38,6 +38,83 @@ Elasticsearch config (mappings + settings) builder for laravel.
 The package is registered through the package discovery of laravel and Composer.
 >https://laravel.com/docs/5.6/packages
 
+## Configuration
+| Key        | Value           | Description  |
+|:-------------:|:-------------:|:-----:|
+| filePath | STRING | File path for elasticsearch configs |
+| validation.whitelistFilter | ARRAY | --- |
+| indices | ARRAY | [INDEX => VERSION, ...] |
+
+### Mappings
+Directory (i.e. 1.0.0) with elasticsearch config files.
+
+#### mappings.php (Example)
+```
+return [
+    TYPE => [
+        'properties' => [
+            FIELD => [
+                'type' => TYPE
+            ],
+            ...
+        ],
+        ...
+    ],
+    ...
+];
+```
+
+#### settings.php (Example)
+```php
+return [
+    'refresh_interval' => "30s",
+    'analysis' => [
+        'filter' => [
+            'germanStop' => [
+                'type' => 'stop',
+                'stopwords' => '_german_'
+            ]
+        ],
+        'analyzer' => [
+            'exampleAnalyzer' => [
+                'type' => 'custom',
+                'tokenizer' => 'standard',
+                'filter' => [
+                    'germanStop'
+                ]
+            ]
+        ]
+    ]
+];
+```
+
+#### translations.php (Example)
+| Key        | Value           | Description  |
+|:-------------:|:-------------:|:-----:|
+| type | STRING | field or index |
+| locales | ARRAY | deDE, enUS, ... |
+| fields | ARRAY | fields to translation |
+| configPerLocale | ARRAY | --- |
+
+```php
+return [
+    'type' => 'field',
+    'locales' => [
+        'enUS'
+    ],
+    'fields' => [
+        'example.properties.title'
+    ],
+    'configPerLocale' => [
+        'example.properties.title' => [
+            'enUS' => [
+                'analyzer' => 'exampleAnalyzerEn'
+            ]
+        ]
+    ]
+];
+```
+
 ## Reporting Issues
 If you do find an issue, please feel free to report it with GitHub's bug tracker for this project.
 
